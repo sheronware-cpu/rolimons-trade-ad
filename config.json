@@ -33,7 +33,7 @@
         "minTotalRequestValue": 400,
         "maxTotalRequestValue": 1000000000,
         "minUpgPercent": 0,
-        "maxUpgPercent": 7,
+        "maxUpgPercent": 5,
         "minDgPercent": 0,
         "maxDgPercent": 4,
         "minDemand": 2,

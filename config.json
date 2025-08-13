@@ -32,15 +32,17 @@
         "maxTotalSend": 1000000,
         "minTotalRequestValue": 30000,
         "maxTotalRequestValue": 1000000000,
-        "minUpgPercent": 7,
-        "maxUpgPercent": 12,
+        "minUpgPercent": 0,
+        "maxUpgPercent": 7,
         "minDgPercent": 0,
         "maxDgPercent": 4,
         "minDemand": 2,
         "minItemValueSend": 5000,
         "minItemValueRequest": 5000,
         "tags": [
-            "adds"
+            "upgrade",
+            "projecteds",
+            "any",
         ],
         "_tagOptions": ["adds", "upgrade", "downgrade", "any", "wishlist", "demand", "rares", "rap", "robux", "projecteds"]
     }

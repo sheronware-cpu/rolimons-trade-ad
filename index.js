@@ -266,72 +266,77 @@ function generateAnyCombo(availableSendingItemsList, availableReceivingItemsList
 }
 
 async function getItems() {
-    let allItemIds = await handleFullInventory();
-    if (!allItemIds || allItemIds.length === 0) {
-        logger.fatal("No inventory items found.");
-        return;
-    }
-    if (config.specificItems.enabled) {
-        for (const itemId of config.specificItems.sendingItems) {
-            if (!allItemIds.includes(itemId)) {
-                logger.fatal("Specific sending is on and some items from your inventory are missing!");
+    try {
+        logger.info("Starting new posting cycle...");
+
+        let allItemIds = await handleFullInventory();
+        if (!allItemIds || allItemIds.length === 0) {
+            logger.fatal("No inventory items found.");
+            return;
+        }
+        if (config.specificItems.enabled) {
+            for (const itemId of config.specificItems.sendingItems) {
+                if (!allItemIds.includes(itemId)) {
+                    logger.fatal("Specific sending is on and some items from your inventory are missing!");
+                    return;
+                }
+            }
+            makeAd(config.specificItems.sendingItems, config.specificItems.receivingItems, config.specificItems.tags);
+        } else if (config.smartAlgo.enabled) {
+            const modesEnabled = [config.smartAlgo.upgrade, config.smartAlgo.downgrade, config.smartAlgo.any].filter(Boolean).length;
+            if (modesEnabled !== 1) {
+                logger.fatal("Smart algo is enabled, BUT you can only choose one: upgrading, downgrading, or any!");
                 return;
             }
-        }
-        makeAd(config.specificItems.sendingItems, config.specificItems.receivingItems, config.specificItems.tags);
-    } else if (config.smartAlgo.enabled) {
-        const modesEnabled = [config.smartAlgo.upgrade, config.smartAlgo.downgrade, config.smartAlgo.any].filter(Boolean).length;
-        if (modesEnabled !== 1) {
-            logger.fatal("Smart algo is enabled, BUT you can only choose one: upgrading, downgrading, or any!");
-            return;
-        }
-        let availableSendingItemsList = [];
-        for (const item of allItemIds) {
-            if (!rolimonsValues[item]) {
-                console.log("⚠️ Missing value data for", item);
-                continue;
+            let availableSendingItemsList = [];
+            for (const item of allItemIds) {
+                if (!rolimonsValues[item]) {
+                    console.log("⚠️ Missing value data for", item);
+                    continue;
+                }
+                const { value } = rolimonsValues[item];
+                if (!config.smartAlgo.blacklisted.includes(item) && value >= config.smartAlgo.minItemValueSend) {
+                    availableSendingItemsList.push(item);
+                }
             }
-            const { value } = rolimonsValues[item];
-            if (!config.smartAlgo.blacklisted.includes(item) && value >= config.smartAlgo.minItemValueSend) {
-                availableSendingItemsList.push(item);
+            let availableReceivingItemsList = [];
+            const allCatalogItems = Object.keys(rolimonsValues);
+            for (const item of allCatalogItems) {
+                const { value, demand } = rolimonsValues[item];
+                if (value >= config.smartAlgo.minItemValueRequest && demand >= config.smartAlgo.minDemand) {
+                    availableReceivingItemsList.push(item);
+                }
+            }
+            if (availableSendingItemsList.length === 0 || availableReceivingItemsList.length === 0) {
+                logger.fatal("One of the item lists is empty after filtering. Cannot continue.");
+                return;
+            }
+            const minSend = config.smartAlgo.minSendItems;
+            const maxSend = Math.min(config.smartAlgo.maxSendItems, 4);
+            const numOfItemsSend = randomInt(minSend, maxSend);
+            let combo = null;
+            if (config.smartAlgo.upgrade) {
+                combo = generateUpgradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, config.smartAlgo);
+            } else if (config.smartAlgo.downgrade) {
+                combo = generateDowngradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, config.smartAlgo);
+            } else if (config.smartAlgo.any) {
+                combo = generateAnyCombo(availableSendingItemsList, availableReceivingItemsList, rolimonsValues, config.smartAlgo);
+            }
+            if (combo) {
+                let tags = config.smartAlgo.tags || [];
+                if (combo.type === "upgrade" && !tags.includes("upgrade")) tags.push("upgrade");
+                if (combo.type === "downgrade" && !tags.includes("downgrade")) tags.push("downgrade");
+                makeAd(combo.finalSendingItems, combo.finalRequestingItems, tags);
+            } else {
+                logger.fatal("No valid combo found for smart algo configuration.");
             }
         }
-        let availableReceivingItemsList = [];
-        const allCatalogItems = Object.keys(rolimonsValues);
-        for (const item of allCatalogItems) {
-            const { value, demand } = rolimonsValues[item];
-            if (value >= config.smartAlgo.minItemValueRequest && demand >= config.smartAlgo.minDemand) {
-                availableReceivingItemsList.push(item);
-            }
-        }
-        //console.log("✅ Filtered Sending Items:", availableSendingItemsList.length, availableSendingItemsList);
-        //console.log("✅ Filtered Receiving Items:", availableReceivingItemsList.length, availableReceivingItemsList);
-        if (availableSendingItemsList.length === 0 || availableReceivingItemsList.length === 0) {
-            logger.fatal("One of the item lists is empty after filtering. Cannot continue.");
-            return;
-        }
-        const minSend = config.smartAlgo.minSendItems;
-        const maxSend = Math.min(config.smartAlgo.maxSendItems, 4);
-        const numOfItemsSend = randomInt(minSend, maxSend);
-        let combo = null;
-        if (config.smartAlgo.upgrade) {
-            combo = generateUpgradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, config.smartAlgo);
-        } else if (config.smartAlgo.downgrade) {
-            combo = generateDowngradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, config.smartAlgo);
-        } else if (config.smartAlgo.any) {
-            combo = generateAnyCombo(availableSendingItemsList, availableReceivingItemsList, rolimonsValues, config.smartAlgo);
-        }
-        if (combo) {
-            let tags = config.smartAlgo.tags || [];
-            if (combo.type === "upgrade" && !tags.includes("upgrade")) tags.push("upgrade");
-            if (combo.type === "downgrade" && !tags.includes("downgrade")) tags.push("downgrade");
-            makeAd(combo.finalSendingItems, combo.finalRequestingItems, tags);
-        } else {
-            logger.fatal("No valid combo found for smart algo configuration.");
-        }
+    } catch (err) {
+        logger.fatal("Error in getItems loop:", err);
     }
-    await sleep(1500000);
-    getItems();
+
+    await sleep(24 * 60 * 1000); // 24 minutes delay
+    getItems(); // repeat
 }
 
 setTimeout(function () {

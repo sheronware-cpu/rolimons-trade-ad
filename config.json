@@ -22,15 +22,15 @@
         "any": true,
         "minSendItems": 3,
         "maxSendItems": 4,
-        "minReceiveItems": 2,
+        "minReceiveItems": 1,
         "maxReceiveItems": 4,
         "blacklisted": [
             "BLACKLISTED_ITEM_ID_1",
             "BLACKLISTED_ITEM_ID_2"
         ],
-        "minTotalSend": 30000,
+        "minTotalSend": 400,
         "maxTotalSend": 1000000,
-        "minTotalRequestValue": 30000,
+        "minTotalRequestValue": 400,
         "maxTotalRequestValue": 1000000000,
         "minUpgPercent": 0,
         "maxUpgPercent": 7,

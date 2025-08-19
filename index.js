@@ -335,7 +335,7 @@ async function getItems() {
         logger.fatal("Error in getItems loop:", err);
     }
 
-    await sleep(48 * 60 * 1000); // 24 minutes delay
+    await sleep(12 * 60 * 1000); // 24 minutes delay
     getItems(); // repeat
 }
 

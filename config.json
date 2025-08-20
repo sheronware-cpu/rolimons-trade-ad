@@ -47,8 +47,9 @@
         "minItemValueRequest": 5000,
         "tags": [
             "upgrade",
+            "downgrade",
             "projecteds",
-            "downgrade"
+            "any"
         ],
         "_tagOptions": ["adds", "upgrade", "downgrade", "any", "wishlist", "demand", "rares", "rap", "robux", "projecteds"]
     }

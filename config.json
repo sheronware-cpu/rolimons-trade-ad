@@ -24,7 +24,7 @@
         "upgrade": false,
         "downgrade": false,
         "any": true,
-        "onlyTagsNoReceiveItems": false,  
+        "onlyTagsNoReceiveItems": true,  
         "minSendItems": 3,
         "maxSendItems": 4,
         "minReceiveItems": 1,
@@ -48,7 +48,7 @@
         "tags": [
             "upgrade",
             "projecteds",
-            "adds"
+            "downgrade"
         ],
         "_tagOptions": ["adds", "upgrade", "downgrade", "any", "wishlist", "demand", "rares", "rap", "robux", "projecteds"]
     }

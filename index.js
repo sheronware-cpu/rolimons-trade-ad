@@ -1,8 +1,8 @@
 /*
 Made by @spiderphobias (Arachnid) on discord. -- (Noor)
 April 10, 2025
-Made for auto posting rolimons trade ad with a smart algorithm. This is smarter and way better then any other bot. 
-Open source and completely free. THIS IS NOT TO ABUSE THE SITE ROLIMONS.COM! 
+Made for auto posting rolimons trade ad with a smart algorithm. This is smarter and way better then any other bot.
+Open source and completely free. THIS IS NOT TO ABUSE THE SITE ROLIMONS.COM!
 Please don't spam unrealistic trades lowering the trade quality, it doesnt help you or other users!
 */
 
@@ -63,17 +63,20 @@ async function updateValues() {
 updateValues();
 
 async function makeAd(sItems, rItems, tags) {
+    // Ensure rItems is an array, even if empty
+    rItems = rItems || [];
+
     let sendBody = (tags.length >= 1)
         ? {
             "player_id": robloxId,
             "offer_item_ids": sItems.map(parseFloat),
-            "request_item_ids": rItems.map(parseFloat),
+            "request_item_ids": rItems.map(parseFloat), // This will be an empty array if rItems is empty
             "request_tags": tags
         }
         : {
             "player_id": robloxId,
             "offer_item_ids": sItems.map(parseFloat),
-            "request_item_ids": rItems.map(parseFloat)
+            "request_item_ids": rItems.map(parseFloat) // This will be an empty array if rItems is empty
         };
 
     console.log(sendBody);
@@ -86,15 +89,10 @@ async function makeAd(sItems, rItems, tags) {
         body: JSON.stringify(sendBody)
     }).then(res => {
         if (res.status === 201) {
-            let stringSend = rolimonsValues[sItems[0]].name + " (" + sItems[0] + ") - " + rolimonsValues[sItems[0]].value;
-            let stringReceive = rolimonsValues[rItems[0]].name + " (" + rItems[0] + ") - " + rolimonsValues[rItems[0]].value;
-            for (const item of sItems) {
-                stringSend = stringSend + ", " + rolimonsValues[item].name + " (" + item + ") - " + rolimonsValues[item].value;
-            }
-            for (const item of rItems) {
-                stringReceive = stringReceive + ", " + rolimonsValues[item].name + " (" + item + ") - " + rolimonsValues[item].value;
-            }
-            logger.success("Successfully posted ad! Sending:", stringSend, "|| Requesting: ", stringReceive);
+            let stringSend = sItems.length > 0 ? sItems.map(item => `${rolimonsValues[item]?.name || item} (${item}) - ${rolimonsValues[item]?.value || 'N/A'}`).join(", ") : "No items";
+            let stringReceive = rItems.length > 0 ? rItems.map(item => `${rolimonsValues[item]?.name || item} (${item}) - ${rolimonsValues[item]?.value || 'N/A'}`).join(", ") : "No items";
+
+            logger.success("Successfully posted ad! Sending:", stringSend, "|| Requesting: ", stringReceive, "|| Tags:", tags.join(", "));
         } else {
             logger.fatal("error requesting rolimons trade ad api. Might be banned! This is NOT because of this bot! Status: ", res.status);
         }
@@ -157,7 +155,11 @@ function chooseRandomSubset(array, size) {
     return shuffled.slice(0, size);
 }
 
+// MODIFIED: Added smartConfig parameter to access onlyTagsNoReceiveItems
 function getRandomReceivingCount(smartConfig) {
+    if (smartConfig.onlyTagsNoReceiveItems) {
+        return 0; // If true, always request 0 items
+    }
     const tagsCount = smartConfig.tags ? smartConfig.tags.length : 0;
     const allowedMax = Math.min(smartConfig.maxReceiveItems, 4 - tagsCount);
     const allowedMin = smartConfig.minReceiveItems;
@@ -165,19 +167,28 @@ function getRandomReceivingCount(smartConfig) {
     return randomInt(allowedMin, allowedMax);
 }
 
+// MODIFIED: Added smartConfig parameter to access onlyTagsNoReceiveItems
 function generateUpgradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, smartConfig) {
     const maxAttempts = 100000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const sendingCombo = chooseRandomSubset(availableSendingItemsList, numOfItemsSend);
-        if (!sendingCombo.every(item => rolimonsValues[item].value >= smartConfig.minItemValueSend)) continue;
-        const sendingValues = sendingCombo.map(item => rolimonsValues[item].value);
+        if (!sendingCombo.every(item => rolimonsValues[item]?.value >= smartConfig.minItemValueSend)) continue; // Added optional chaining
+        const sendingValues = sendingCombo.map(item => rolimonsValues[item]?.value || 0); // Added optional chaining
         const S_total = sendingValues.reduce((a, b) => a + b, 0);
         if (S_total < smartConfig.minTotalSend || S_total > smartConfig.maxTotalSend) continue;
+
         const receivingCount = getRandomReceivingCount(smartConfig);
-        if (!receivingCount) continue;
+
+        // If onlyTagsNoReceiveItems is true, skip receiving item logic
+        if (smartConfig.onlyTagsNoReceiveItems) {
+            return { finalSendingItems: sendingCombo, finalRequestingItems: [] };
+        }
+
+        if (receivingCount === null || receivingCount === 0) continue; // Ensure receivingCount is valid and not 0 if not in onlyTags mode
+
         const receivingCombo = chooseRandomSubset(availableReceivingItemsList, receivingCount);
-        if (!receivingCombo.every(item => rolimonsValues[item].value >= smartConfig.minItemValueRequest)) continue;
-        const receivingValues = receivingCombo.map(item => rolimonsValues[item].value);
+        if (!receivingCombo.every(item => rolimonsValues[item]?.value >= smartConfig.minItemValueRequest)) continue; // Added optional chaining
+        const receivingValues = receivingCombo.map(item => rolimonsValues[item]?.value || 0); // Added optional chaining
         const R_total = receivingValues.reduce((a, b) => a + b, 0);
         if (smartConfig.minTotalRequestValue && R_total < smartConfig.minTotalRequestValue) continue;
         if (smartConfig.maxTotalRequestValue && R_total > smartConfig.maxTotalRequestValue) continue;
@@ -192,19 +203,28 @@ function generateUpgradeCombo(availableSendingItemsList, availableReceivingItems
     return null;
 }
 
+// MODIFIED: Added smartConfig parameter to access onlyTagsNoReceiveItems
 function generateDowngradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, smartConfig) {
     const maxAttempts = 100000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const sendingCombo = chooseRandomSubset(availableSendingItemsList, numOfItemsSend);
-        if (!sendingCombo.every(item => rolimonsValues[item].value >= smartConfig.minItemValueSend)) continue;
-        const sendingValues = sendingCombo.map(item => rolimonsValues[item].value);
+        if (!sendingCombo.every(item => rolimonsValues[item]?.value >= smartConfig.minItemValueSend)) continue; // Added optional chaining
+        const sendingValues = sendingCombo.map(item => rolimonsValues[item]?.value || 0); // Added optional chaining
         const S_total = sendingValues.reduce((a, b) => a + b, 0);
         if (S_total < smartConfig.minTotalSend || S_total > smartConfig.maxTotalSend) continue;
+
         const receivingCount = getRandomReceivingCount(smartConfig);
-        if (!receivingCount) continue;
+
+        // If onlyTagsNoReceiveItems is true, skip receiving item logic
+        if (smartConfig.onlyTagsNoReceiveItems) {
+            return { finalSendingItems: sendingCombo, finalRequestingItems: [] };
+        }
+
+        if (receivingCount === null || receivingCount === 0) continue; // Ensure receivingCount is valid and not 0 if not in onlyTags mode
+
         const receivingCombo = chooseRandomSubset(availableReceivingItemsList, receivingCount);
-        if (!receivingCombo.every(item => rolimonsValues[item].value >= smartConfig.minItemValueRequest)) continue;
-        const receivingValues = receivingCombo.map(item => rolimonsValues[item].value);
+        if (!receivingCombo.every(item => rolimonsValues[item]?.value >= smartConfig.minItemValueRequest)) continue; // Added optional chaining
+        const receivingValues = receivingCombo.map(item => rolimonsValues[item]?.value || 0); // Added optional chaining
         const R_total = receivingValues.reduce((a, b) => a + b, 0);
         if (smartConfig.minTotalRequestValue && R_total < smartConfig.minTotalRequestValue) continue;
         if (smartConfig.maxTotalRequestValue && R_total > smartConfig.maxTotalRequestValue) continue;
@@ -219,23 +239,39 @@ function generateDowngradeCombo(availableSendingItemsList, availableReceivingIte
     return null;
 }
 
+// MODIFIED: Added smartConfig parameter to access onlyTagsNoReceiveItems
 function generateAnyCombo(availableSendingItemsList, availableReceivingItemsList, rolimonsValues, smartConfig) {
     const maxAttempts = 100000;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const numOfItemsSend = randomInt(smartConfig.minSendItems, smartConfig.maxSendItems);
-        const modeUpgrade = Math.random() < 0.5;
         const sendingCombo = chooseRandomSubset(availableSendingItemsList, numOfItemsSend);
         const sendingValues = sendingCombo.map(item => rolimonsValues[item]?.value || 0);
         const S_total = sendingValues.reduce((a, b) => a + b, 0);
+
+        // If onlyTagsNoReceiveItems is true, return immediately with empty receiving items
+        if (smartConfig.onlyTagsNoReceiveItems) {
+            return {
+                finalSendingItems: sendingCombo,
+                finalRequestingItems: [],
+                type: "any" // Or you can set it to a specific type if desired, but "any" is fine
+            };
+        }
+
         const receivingCount = getRandomReceivingCount(smartConfig);
-        if (!receivingCount) continue;
+        if (!receivingCount) continue; // If receivingCount is null or 0 (and not in onlyTags mode), continue
+
         const receivingCombo = chooseRandomSubset(availableReceivingItemsList, receivingCount);
         const receivingValues = receivingCombo.map(item => rolimonsValues[item]?.value || 0);
         const R_total = receivingValues.reduce((a, b) => a + b, 0);
         const maxSending = Math.max(...sendingValues);
         const maxReceiving = Math.max(...receivingValues);
+
         if (S_total < smartConfig.minTotalSend || S_total > smartConfig.maxTotalSend) continue;
         if (R_total < smartConfig.minTotalRequestValue || R_total > smartConfig.maxTotalRequestValue) continue;
+
+        // Randomly choose between upgrade/downgrade logic if not in onlyTags mode
+        const modeUpgrade = Math.random() < 0.5;
+
         if (modeUpgrade) {
             const lower = R_total * (1 + smartConfig.minUpgPercent / 100);
             const upper = R_total * (1 + smartConfig.maxUpgPercent / 100);
@@ -283,11 +319,23 @@ async function getItems() {
             }
             makeAd(config.specificItems.sendingItems, config.specificItems.receivingItems, config.specificItems.tags);
         } else if (config.smartAlgo.enabled) {
-            const modesEnabled = [config.smartAlgo.upgrade, config.smartAlgo.downgrade, config.smartAlgo.any].filter(Boolean).length;
-            if (modesEnabled !== 1) {
-                logger.fatal("Smart algo is enabled, BUT you can only choose one: upgrading, downgrading, or any!");
-                return;
+            // If onlyTagsNoReceiveItems is true, we bypass the one-mode check for upgrade/downgrade/any
+            // as the "any" combo will be used to generate the sending items.
+            if (!config.smartAlgo.onlyTagsNoReceiveItems) {
+                const modesEnabled = [config.smartAlgo.upgrade, config.smartAlgo.downgrade, config.smartAlgo.any].filter(Boolean).length;
+                if (modesEnabled !== 1) {
+                    logger.fatal("Smart algo is enabled, BUT you can only choose one: upgrading, downgrading, or any (unless 'onlyTagsNoReceiveItems' is true)!");
+                    return;
+                }
+            } else {
+                // If onlyTagsNoReceiveItems is true, ensure 'any' is enabled for sending item generation
+                if (!config.smartAlgo.any) {
+                    logger.fatal("When 'onlyTagsNoReceiveItems' is true, 'any' must also be true in smartAlgo to generate sending items.");
+                    return;
+                }
             }
+
+
             let availableSendingItemsList = [];
             for (const item of allItemIds) {
                 if (!rolimonsValues[item]) {
@@ -299,6 +347,9 @@ async function getItems() {
                     availableSendingItemsList.push(item);
                 }
             }
+
+            // availableReceivingItemsList is still needed for the functions, even if not used for selection
+            // when onlyTagsNoReceiveItems is true.
             let availableReceivingItemsList = [];
             const allCatalogItems = Object.keys(rolimonsValues);
             for (const item of allCatalogItems) {
@@ -307,25 +358,43 @@ async function getItems() {
                     availableReceivingItemsList.push(item);
                 }
             }
-            if (availableSendingItemsList.length === 0 || availableReceivingItemsList.length === 0) {
-                logger.fatal("One of the item lists is empty after filtering. Cannot continue.");
+
+            if (availableSendingItemsList.length === 0) { // Only check sending list if onlyTagsNoReceiveItems is true
+                logger.fatal("Sending item list is empty after filtering. Cannot continue.");
                 return;
             }
+            // If not onlyTagsNoReceiveItems, then check receiving list too
+            if (!config.smartAlgo.onlyTagsNoReceiveItems && availableReceivingItemsList.length === 0) {
+                logger.fatal("Receiving item list is empty after filtering. Cannot continue.");
+                return;
+            }
+
+
             const minSend = config.smartAlgo.minSendItems;
             const maxSend = Math.min(config.smartAlgo.maxSendItems, 4);
             const numOfItemsSend = randomInt(minSend, maxSend);
             let combo = null;
-            if (config.smartAlgo.upgrade) {
+
+            // Logic for generating combo based on config
+            if (config.smartAlgo.onlyTagsNoReceiveItems) {
+                // When onlyTagsNoReceiveItems is true, we use generateAnyCombo to get sending items
+                // and it will return an empty receivingItems array.
+                combo = generateAnyCombo(availableSendingItemsList, availableReceivingItemsList, rolimonsValues, config.smartAlgo);
+            } else if (config.smartAlgo.upgrade) {
                 combo = generateUpgradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, config.smartAlgo);
             } else if (config.smartAlgo.downgrade) {
                 combo = generateDowngradeCombo(availableSendingItemsList, availableReceivingItemsList, numOfItemsSend, rolimonsValues, config.smartAlgo);
             } else if (config.smartAlgo.any) {
                 combo = generateAnyCombo(availableSendingItemsList, availableReceivingItemsList, rolimonsValues, config.smartAlgo);
             }
+
             if (combo) {
                 let tags = config.smartAlgo.tags || [];
-                if (combo.type === "upgrade" && !tags.includes("upgrade")) tags.push("upgrade");
-                if (combo.type === "downgrade" && !tags.includes("downgrade")) tags.push("downgrade");
+                // Add upgrade/downgrade tags only if items are actually being requested
+                if (!config.smartAlgo.onlyTagsNoReceiveItems) {
+                    if (combo.type === "upgrade" && !tags.includes("upgrade")) tags.push("upgrade");
+                    if (combo.type === "downgrade" && !tags.includes("downgrade")) tags.push("downgrade");
+                }
                 makeAd(combo.finalSendingItems, combo.finalRequestingItems, tags);
             } else {
                 logger.fatal("No valid combo found for smart algo configuration.");

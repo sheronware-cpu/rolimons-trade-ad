@@ -25,7 +25,7 @@
         "any": true,
         "onlyTagsNoReceiveItems": true,  
         "minSendItems": 4,
-        "maxSendItems": 5,
+        "maxSendItems": 4,
         "minReceiveItems": 1,
         "maxReceiveItems": 4,
         "blacklisted": [

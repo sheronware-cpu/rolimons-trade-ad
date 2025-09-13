@@ -30,7 +30,7 @@
         "maxReceiveItems": 4,
         "blacklisted": [
 ],
-        "minTotalSend": 400,
+        "minTotalSend": 50000,
         "maxTotalSend": 1000000,
         "minTotalRequestValue": 400,
         "maxTotalRequestValue": 1000000000,

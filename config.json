@@ -37,7 +37,7 @@
         "minUpgPercent": 10,
         "maxUpgPercent": 50,
         "minDgPercent": 0,
-        "maxDgPercent": 4,
+        "maxDgPercent": 40,
         "minDemand": 2,
         "minItemValueSend": 3000,
         "minItemValueRequest": 5000,
